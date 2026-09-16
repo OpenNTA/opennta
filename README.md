@@ -317,7 +317,7 @@ TrackMate selected as the method.
 1. Load a `_spots.csv` produced by the Track tab (or any TrackMate run with
    the same column layout).
 2. Open and adjust the configuration settings (sensor size, magnification,
-   fps, temperature, viscosity).
+   fps, exposure time, temperature, viscosity).
 
    <p align="center">
    <img width="300"alt="config" src="https://github.com/user-attachments/assets/9fb7908e-701b-443d-8c9a-5c8f2d315df1" />
@@ -325,13 +325,14 @@ TrackMate selected as the method.
 
 
 
-   **Units.** Each field is entered in the unit shown next to it in the dialog:
+   **Units** Each field is entered in the unit shown next to it in the dialog:
 
    | Field | Unit | Default |
    |-------|------|---------|
    | Sensor pixel size | µm | 6.5 |
    | Lens magnification | × | 20 |
    | Frames per second | Hz | 25 |
+   | Exposure time | ms | 0 |
    | Temperature | **K** (Kelvin) | 295.15 |
    | Viscosity | **mPa·s** | 0.9544 |
 
@@ -405,7 +406,60 @@ field as a `*_field.csv`.
 <img width="600" alt="unet" src="https://github.com/user-attachments/assets/39891d3f-53a4-4918-9bb7-030fc6453061" />
 </p>
 
+#### Size-distribution methods
 
+OpenNTA compensates for uniform-exposure motion
+blur by using the effective lag time
+
+$$
+\tau_{\mathrm{eff}}(k)=\frac{k}{fps}-\frac{t_{\mathrm{exp}}}{3}.
+$$
+
+**Direct.** This method estimates each track's diffusion coefficient from the
+slope of its mean-squared displacement (MSD), converts it to a hydrodynamic
+diameter with the Stokes--Einstein equation, and bins the resulting individual
+diameters:
+
+$$
+MSD(k) \approx 4D\tau_{\mathrm{eff}}(k)+b,
+\qquad
+d=\frac{k_B T}{3\pi\eta D}.
+$$
+
+Here, a *lag* is the number of frame intervals between two positions. For
+example, at 25 fps with a 20 ms exposure, lag 1 compares adjacent frames and
+has $\tau_{\mathrm{eff}}=40-20/3=33.33$ ms; lag 2 compares positions two
+frames apart and has $\tau_{\mathrm{eff}}=80-20/3=73.33$ ms. The selected
+lag range supplies the points used for the MSD slope. Direct adds neither a
+distribution-family assumption nor an iterative distribution optimizer, so it
+has no model-selection or optimizer-convergence failure mode. Measurement,
+tracking, and MSD-fit uncertainty can still affect its result.
+
+**FTLA.** Finite Track Length Adjustment is a parametric maximum-likelihood
+method. It fits a selected diameter-distribution family (log-normal by default)
+to the finite-track Gamma likelihood, producing a smooth result that is best
+suited to an approximately unimodal sample:
+
+$$
+\mathcal{L}(\theta)=\prod_k\sum_b
+P(z_k\mid n_k,d_b)\,w_b(\theta).
+$$
+
+Reference: Saveyn et al.(2010): https://doi.org/10.1016/j.jcis.2010.09.006
+
+**Iterative.** This non-parametric maximum-likelihood method makes no
+single-family assumption. Starting with equal diameter-bin weights, it applies
+an expectation-maximization update until the monitored relative improvement is
+less than 1% (or the iteration limit is reached):
+
+$$
+\gamma_{kb}=\frac{w_bP(z_k\mid n_k,d_b)}
+{\sum_j w_jP(z_k\mid n_k,d_j)},
+\qquad
+w_b^{\mathrm{new}}=\frac{1}{K}\sum_k\gamma_{kb}.
+$$
+
+Reference: Walker(2012): https://doi.org/10.1088/0957-0233/23/6/065605
 
 ### Batch tab
 
