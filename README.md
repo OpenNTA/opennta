@@ -411,7 +411,7 @@ field as a `*_field.csv`.
 #### Size-distribution methods — Direct, FTLA, and Iterative
 
 All three methods use the configured temperature, viscosity, frame rate, and
-exposure time. For lag \(k\), OpenNTA compensates for uniform-exposure motion
+exposure time. For lag $k$, OpenNTA compensates for uniform-exposure motion
 blur by using the effective lag time
 
 $$
@@ -431,8 +431,8 @@ $$
 
 Here, a *lag* is the number of frame intervals between two positions. For
 example, at 25 fps with a 20 ms exposure, lag 1 compares adjacent frames and
-has \(\tau_{\mathrm{eff}}=40-20/3=33.33\) ms; lag 2 compares positions two
-frames apart and has \(\tau_{\mathrm{eff}}=80-20/3=73.33\) ms. The selected
+has $\tau_{\mathrm{eff}}=40-20/3=33.33$ ms; lag 2 compares positions two
+frames apart and has $\tau_{\mathrm{eff}}=80-20/3=73.33$ ms. The selected
 lag range supplies the points used for the MSD slope. Direct adds neither a
 distribution-family assumption nor an iterative distribution optimizer, so it
 has no model-selection or optimizer-convergence failure mode. Measurement,
