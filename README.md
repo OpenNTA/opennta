@@ -469,11 +469,11 @@ Reference: Walker, *Improved nano-particle tracking analysis*,
 
 **Selection guide.**
 
-| Method | Main advantage | Consideration |
-|--------|----------------|---------------|
-| Direct | Simple and fast; introduces no distribution-model selection or iterative-optimizer convergence error | Individual estimates retain measurement, tracking, and MSD-fit uncertainty |
-| FTLA | Corrects finite-track bias with a smooth parametric estimate | Assumes a distribution family and is most suitable for approximately unimodal samples |
-| Iterative | Distribution-family-free and able to represent multimodal samples | Iterative convergence is slower and the result can be less smooth |
+| Method | Advantage | Disadvantage |
+|--------|-----------|--------------|
+| Direct | No distribution-model selection or iterative-optimizer convergence error | Sensitivity to measurement, tracking, and MSD-fit uncertainty and finite-track bias |
+| FTLA | Smooth correction of finite-track bias | Distribution-family assumption and limited suitability for multimodal samples |
+| Iterative | No distribution-family assumption and support for multimodal samples | Slower convergence and potentially less smooth results |
 
 
 
