@@ -445,7 +445,7 @@ $$
 P(z_k\mid n_k,d_b)\,w_b(\theta).
 $$
 
-Reference: Saveyn et al.(2010)(https://doi.org/10.1016/j.jcis.2010.09.006).
+Reference: Saveyn et al.(2010): https://doi.org/10.1016/j.jcis.2010.09.006
 
 **Iterative.** This non-parametric maximum-likelihood method makes no
 single-family assumption. Starting with equal diameter-bin weights, it applies
@@ -459,7 +459,7 @@ $$
 w_b^{\mathrm{new}}=\frac{1}{K}\sum_k\gamma_{kb}.
 $$
 
-Reference: Walker(2012)(https://doi.org/10.1088/0957-0233/23/6/065605).
+Reference: Walker(2012): https://doi.org/10.1088/0957-0233/23/6/065605
 
 ### Batch tab
 
