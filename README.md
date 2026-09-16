@@ -325,7 +325,7 @@ TrackMate selected as the method.
 
 
 
-   **Units.** Each field is entered in the unit shown next to it in the dialog:
+   **Units** Each field is entered in the unit shown next to it in the dialog:
 
    | Field | Unit | Default |
    |-------|------|---------|
@@ -336,9 +336,7 @@ TrackMate selected as the method.
    | Temperature | **K** (Kelvin) | 295.15 |
    | Viscosity | **mPa·s** | 0.9544 |
 
-   The unit is stored alongside each value in `config.json`. Exposure time
-   must be non-negative and cannot exceed the frame interval (`1 / fps`). It
-   is converted to seconds internally and used to compensate for motion blur.
+   The unit is stored alongside each value in `config.json`.
 
    <details>
    <summary><b>Config file location</b></summary>
@@ -408,10 +406,9 @@ field as a `*_field.csv`.
 <img width="600" alt="unet" src="https://github.com/user-attachments/assets/39891d3f-53a4-4918-9bb7-030fc6453061" />
 </p>
 
-#### Size-distribution methods — Direct, FTLA, and Iterative
+#### Size-distribution methods
 
-All three methods use the configured temperature, viscosity, frame rate, and
-exposure time. For lag $k$, OpenNTA compensates for uniform-exposure motion
+OpenNTA compensates for uniform-exposure motion
 blur by using the effective lag time
 
 $$
@@ -448,9 +445,7 @@ $$
 P(z_k\mid n_k,d_b)\,w_b(\theta).
 $$
 
-Reference: Saveyn et al., *Accurate particle size distribution determination
-by nanoparticle tracking analysis based on 2-D Brownian dynamics simulation*,
-[J. Colloid Interface Sci. 352, 593--600 (2010)](https://doi.org/10.1016/j.jcis.2010.09.006).
+Reference: Saveyn et al.(2010)(https://doi.org/10.1016/j.jcis.2010.09.006).
 
 **Iterative.** This non-parametric maximum-likelihood method makes no
 single-family assumption. Starting with equal diameter-bin weights, it applies
@@ -464,18 +459,7 @@ $$
 w_b^{\mathrm{new}}=\frac{1}{K}\sum_k\gamma_{kb}.
 $$
 
-Reference: Walker, *Improved nano-particle tracking analysis*,
-[Meas. Sci. Technol. 23, 065605 (2012)](https://doi.org/10.1088/0957-0233/23/6/065605).
-
-**Selection guide.**
-
-| Method | Main advantage | Consideration |
-|--------|----------------|---------------|
-| Direct | Simple and fast; introduces no distribution-model selection or iterative-optimizer convergence error | Individual estimates retain measurement, tracking, and MSD-fit uncertainty |
-| FTLA | Corrects finite-track bias with a smooth parametric estimate | Assumes a distribution family and is most suitable for approximately unimodal samples |
-| Iterative | Distribution-family-free and able to represent multimodal samples | Iterative convergence is slower and the result can be less smooth |
-
-
+Reference: Walker(2012)(https://doi.org/10.1088/0957-0233/23/6/065605).
 
 ### Batch tab
 
