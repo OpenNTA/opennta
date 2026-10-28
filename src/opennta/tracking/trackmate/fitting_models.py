@@ -5,7 +5,9 @@ from numpy.typing import NDArray
 from scipy import stats
 from scipy.interpolate import CubicSpline
 
-CHENG_SCHWARTZMAN_DEFAULT_KAPPA = 0.999  # near 1.0 freezes kappa; lower values relax the constraint
+CHENG_SCHWARTZMAN_DEFAULT_KAPPA = 0.999  # fixed during fitting; only mu and sigma are estimated
+CHENG_SCHWARTZMAN_MIN_KAPPA = 1e-6
+CHENG_SCHWARTZMAN_MAX_KAPPA = np.sqrt(2.0) - 1e-6  # keep 2 - kappa**2 away from zero
 
 # Upper bound (in standardized z = (u - mu)/sigma) of the tail-integration
 # support when solving for the auto-threshold: beyond z = 6 values are
@@ -36,7 +38,12 @@ def _capped_upper_tail(cdf_standardized, z0: float,
 
 
 class ChengSchwartzmanModel:
-    """Cheng & Schwartzman (2015), eq. (2.10). Params: mu, sigma, kappa."""
+    """2D local-maxima height PDF, Cheng & Schwartzman (2018), Example 3.8, h₂(x).
+
+    Expected number and height distribution of critical points of smooth
+    isotropic Gaussian random fields. Bernoulli, 24(4B), 3422–3446.
+    DOI: 10.3150/17-BEJ964. Params: mu, sigma, 0 < kappa < sqrt(2).
+    """
 
     model_name = "Cheng-Schwartzman"
     default_frac = 0.80
@@ -58,7 +65,7 @@ class ChengSchwartzmanModel:
 
     def _cheng_schwartzman_standardized_density(self, x: NDArray[np.floating], kappa: float) -> float:
         x = np.asarray(x, dtype=float)
-        k = float(np.clip(kappa, 1e-6, 0.999))
+        k = float(np.clip(kappa, CHENG_SCHWARTZMAN_MIN_KAPPA, CHENG_SCHWARTZMAN_MAX_KAPPA))
 
         d1 = max(1e-6, 2.0 - k*k)
         d2 = max(1e-6, 3.0 - k*k)
@@ -115,7 +122,7 @@ class ChengSchwartzmanModel:
 
     def get_plot_label(self, params: dict[str, float]) -> str:
         kappa = params.get("kappa", CHENG_SCHWARTZMAN_DEFAULT_KAPPA)
-        return f"C&S (2.10) fit, kappa={kappa:.3f}"
+        return f"C&S (2018), Example 3.8 fit, kappa={kappa:.3f}"
 
     def validate_params(self, params: dict[str, float]) -> bool:
         mu, sigma, kappa = params["mu"], params["sigma"], params["kappa"]
@@ -123,7 +130,7 @@ class ChengSchwartzmanModel:
             return False
         if sigma <= 0:
             return False
-        if not (1e-6 <= kappa <= 1.0):
+        if not (CHENG_SCHWARTZMAN_MIN_KAPPA <= kappa < np.sqrt(2.0)):
             return False
         return True
 

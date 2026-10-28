@@ -20,6 +20,7 @@ import pytest
 from scipy import integrate
 
 from opennta.tracking.trackmate.fitting_models import (
+    CHENG_SCHWARTZMAN_MAX_KAPPA,
     ChengSchwartzmanModel,
     GaussianModel,
     Poly2Model,
@@ -142,3 +143,80 @@ def test_validate_params_rejects_nonpositive_sigma(model_id):
     bad["sigma"] = 0.0
     assert model.validate_params(good) is True
     assert model.validate_params(bad) is False
+
+
+@pytest.mark.parametrize("kappa, expected", [
+    (0.1, [0.0029332268011591995, 0.21053034792865805, 0.3961539095977854,
+           0.2734097508326391, 0.006426752303863714]),
+    (0.5, [0.0002958256185994926, 0.09499123813804201, 0.33030808483557894,
+           0.3880079966577905, 0.021206096376921963]),
+    (0.999, [2.3504245197577625e-7, 0.009335664841625013, 0.1435550090214897,
+             0.4523784296710568, 0.0624378523075311]),
+])
+def test_cheng_schwartzman_preserves_legacy_pdf_values(kappa, expected):
+    model = ChengSchwartzmanModel()
+    actual = model.pdf_untruncated(np.array([-3., -1., 0., 1., 3.]),
+                                   mu=0.0, sigma=1.0, kappa=kappa)
+    assert actual == pytest.approx(expected, rel=1e-12, abs=1e-15)
+
+
+def test_cheng_schwartzman_at_one_uses_requested_kappa():
+    # h₂(x) at kappa=1, without the legacy clipping to 0.999.
+    expected = [2.2853409034509584e-7, 0.00925709790379084, 0.14310836243158442,
+                0.4523418705125749, 0.06255345388097924]
+    actual = ChengSchwartzmanModel().pdf_untruncated(
+        np.array([-3., -1., 0., 1., 3.]), mu=0.0, sigma=1.0, kappa=1.0,
+    )
+    assert actual == pytest.approx(expected, rel=1e-12, abs=1e-15)
+
+
+@pytest.mark.parametrize("kappa", [1e-6, 0.5, 0.999, 1.0, 1.1, 1.3,
+                                   CHENG_SCHWARTZMAN_MAX_KAPPA])
+def test_cheng_schwartzman_pdf_normalized_across_kappa_domain(kappa):
+    model = ChengSchwartzmanModel()
+
+    def density(x):
+        return model.pdf_untruncated(x, mu=0.0, sigma=1.0, kappa=kappa)
+
+    with np.errstate(invalid="raise", divide="raise", over="raise"):
+        values = density(np.linspace(-40.0, 40.0, 16001))
+        # Adaptive quadrature resolves the narrow transition near kappa=sqrt(2).
+        mass, _ = integrate.quad(density, -12.0, 12.0, points=[0.0], epsabs=1e-10)
+    assert np.all(np.isfinite(values))
+    assert np.all(values >= 0.0)
+    assert mass == pytest.approx(1.0, abs=1e-8)
+
+
+@pytest.mark.parametrize("kappa", [1.1, 1.3, CHENG_SCHWARTZMAN_MAX_KAPPA])
+def test_cheng_schwartzman_cdf_and_tail_match_quadrature(kappa):
+    model = ChengSchwartzmanModel()
+    params = dict(mu=50.0, sigma=5.0, kappa=kappa)
+    u0 = 55.0
+    mass_below, _ = integrate.quad(lambda u: model.pdf_untruncated(u, **params), -10, u0)
+    mass_above, _ = integrate.quad(lambda u: model.pdf_untruncated(u, **params), u0, 80)
+    assert model.truncation_normalizer(u0, **params) == pytest.approx(mass_below, abs=5e-6)
+    assert model.tail_probability(u0, **params) == pytest.approx(
+        mass_above / (mass_above + mass_below), abs=5e-6,
+    )
+    tails = [model.tail_probability(u, **params) for u in np.linspace(30, 80, 101)]
+    assert np.all(np.isfinite(tails))
+    assert np.all(np.diff(tails) <= 1e-9)
+
+
+@pytest.mark.parametrize("kappa, valid", [
+    (0.0, False), (-1.0, False), (1e-7, False), (1e-6, True),
+    (1.0, True), (1.1, True), (1.3, True), (CHENG_SCHWARTZMAN_MAX_KAPPA, True),
+    (np.nextafter(np.sqrt(2.0), 0.0), True), (np.sqrt(2.0), False),
+    (1.5, False), (np.nan, False), (np.inf, False),
+])
+def test_cheng_schwartzman_validates_open_kappa_domain(kappa, valid):
+    assert ChengSchwartzmanModel().validate_params(dict(mu=0.0, sigma=1.0, kappa=kappa)) is valid
+
+
+def test_cheng_schwartzman_default_fitting_bounds_fix_kappa():
+    assert ChengSchwartzmanModel().get_bounds()[2] == (0.999, 0.999)
+
+
+def test_cheng_schwartzman_numerical_limit_leaves_endpoint_margin():
+    assert 1.3 < CHENG_SCHWARTZMAN_MAX_KAPPA < np.sqrt(2.0)
+    assert np.sqrt(2.0) - CHENG_SCHWARTZMAN_MAX_KAPPA == pytest.approx(1e-6)

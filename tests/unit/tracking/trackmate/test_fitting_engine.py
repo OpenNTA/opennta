@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from scipy.integrate import cumulative_trapezoid
 
 from opennta.tests._helpers import synth as _synth
+from opennta.tracking.trackmate import fitting_models
 from opennta.tracking.trackmate.fitting import FittingEngine
 from opennta.tracking.trackmate.types import FitResult, ThresholdResult
 
@@ -113,3 +115,30 @@ def test_exported_fit_csv_uses_unique_decimal_tenths(tmp_path):
     assert np.unique(grid).size == grid.size
     assert np.diff(grid) == pytest.approx(0.1)
     assert grid * 10 == pytest.approx(np.round(grid * 10))
+
+
+@pytest.mark.parametrize("kappa", [0.999, 1.1, 1.3])
+@pytest.mark.parametrize("mu, sigma", [(0.0, 1.0), (50.0, 5.0)])
+def test_cheng_schwartzman_fit_preserves_fixed_kappa(kappa, mu, sigma, monkeypatch):
+    monkeypatch.setattr(fitting_models, "CHENG_SCHWARTZMAN_DEFAULT_KAPPA", kappa)
+    engine = FittingEngine("Cheng-Schwartzman")
+    grid = np.linspace(-12.0, 12.0, 48001)
+    density = engine.model.pdf_untruncated(grid, mu=0.0, sigma=1.0, kappa=kappa)
+    cdf = cumulative_trapezoid(density, grid, initial=0.0)
+    # Deterministic quantiles avoid sampling noise in location and scale recovery.
+    probabilities = (np.arange(10000) + 0.5) / 10000
+    values = mu + sigma * np.interp(probabilities, cdf, grid)
+
+    result = engine.calculate_threshold(values, alpha=1e-3)
+
+    assert result.ok and result.converged
+    assert result.params["kappa"] == kappa
+    assert result.params["mu"] == pytest.approx(mu, abs=0.03 * sigma)
+    assert result.params["sigma"] == pytest.approx(sigma, rel=0.02)
+    assert np.isfinite(result.u_star_alpha)
+    assert engine.model.tail_probability(result.u_star_alpha, **result.params) == pytest.approx(1e-3)
+    assert result.u_star_alpha == pytest.approx(
+        engine.solve_threshold_for_tail_prob(1e-3, mu - 12 * sigma, mu + 6 * sigma,
+                                             mu=mu, sigma=sigma, kappa=kappa),
+        abs=0.05 * sigma,
+    )
